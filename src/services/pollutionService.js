@@ -84,69 +84,7 @@ class PollutionService {
     }
   }
 
-
-  /*
-  async getCities(page=1, limit=10) {
-    try {
-      if (!this.token) await this.authenticate();
-
-      const countries = ['PL', 'DE', 'ES', 'FR'];
-      const allCities = [];
-
-      for (const country of countries) {
-          try {
-            const data = await this.fetchData(country, page, limit);
-            console.log("... data ...", data);
-
-            if (data && data.length > 0) {
-              // Map raw data first
-              let mapped = data.map(async item => ({
-                name: item.city || item.name,
-                country: item.country || country,
-                pollution: item.pollutionLevel || item.pollution || 0,
-                description: await getCityDescription(item.city || item.name) || ''
-              }));
-
-              // Sanitize and filter out invalid/unknown cities
-              mapped = sanitizeData(mapped)
-                .filter(city => city.name && validateCity(city)); 
-
-              console.log(".. mapped ...", mapped);
-              // Only push valid cities
-              if (mapped.length > 0) {
-                allCities.push(...mapped);
-              }
-            }
-          } catch (error) {
-            console.error(`Skipping ${country} due to error:`, error.message);
-            continue;
-          }
-      }
-
-      return {
-        success: true,
-        page,
-        limit, 
-        total: allCities.length,
-        cities: allCities,
-        ...(allCities.length === 0 && { 
-          warning: 'API returned no valid city data',
-          debug: 'The API responded with unexpected format'
-        })
-      };
-    } catch (error) {
-      console.error('Failed to get cities:', error);
-      return {
-        success: false,
-        error: 'Failed to fetch city data',
-        debug: {
-          message: error.message,
-          ...(error.response && { responseStatus: error.response.status })
-        }
-      };
-    }
-  }
-  */
+  
  async getCities(page = 1, limit = 10) {
     try {
       if (!this.token) await this.authenticate();
