@@ -1,10 +1,10 @@
 **To run script-**
 
-node ./src/server.js
+*node ./src/server.js*
 
 
 
-Browser access - http://localhost:3000/cities
+**Browser access - http://localhost:3000/cities**
 
 will return data - Example - {
   "success": true,
