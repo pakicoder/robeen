@@ -6,7 +6,10 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const result = await pollutionService.getCities();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const result = await pollutionService.getCities(page, limit);
     
     if (!result.success) {
       return res.status(500).json(result);
