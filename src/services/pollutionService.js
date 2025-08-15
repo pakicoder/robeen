@@ -7,6 +7,8 @@ const {
   capitalizeFirstLetter
  } = require('../utils/validators.js');
 
+ const wikiService = require('./wikipediaService.js');
+
 class PollutionService {
   constructor() {
     this.baseUrl = 'https://be-recruitment-task.onrender.com';
@@ -82,8 +84,9 @@ class PollutionService {
     }
   }
 
+
   /*
-  async getCities() {
+  async getCities(page=1, limit=10) {
     try {
       if (!this.token) await this.authenticate();
 
@@ -91,24 +94,39 @@ class PollutionService {
       const allCities = [];
 
       for (const country of countries) {
-        try {
-          const data = await this.fetchData(country);
-          console.log("... data ...",data);
-          if (data && data.length > 0) {
-            allCities.push(...data.map(item => ({
-              name: item.city || item.name || 'Unknown',
-              country: item.country || country,
-              pollution: item.pollutionLevel || item.pollution || 0
-            })));
+          try {
+            const data = await this.fetchData(country, page, limit);
+            console.log("... data ...", data);
+
+            if (data && data.length > 0) {
+              // Map raw data first
+              let mapped = data.map(async item => ({
+                name: item.city || item.name,
+                country: item.country || country,
+                pollution: item.pollutionLevel || item.pollution || 0,
+                description: await getCityDescription(item.city || item.name) || ''
+              }));
+
+              // Sanitize and filter out invalid/unknown cities
+              mapped = sanitizeData(mapped)
+                .filter(city => city.name && validateCity(city)); 
+
+              console.log(".. mapped ...", mapped);
+              // Only push valid cities
+              if (mapped.length > 0) {
+                allCities.push(...mapped);
+              }
+            }
+          } catch (error) {
+            console.error(`Skipping ${country} due to error:`, error.message);
+            continue;
           }
-        } catch (error) {
-          console.error(`Skipping ${country} due to error:`, error.message);
-          continue;
-        }
       }
 
       return {
         success: true,
+        page,
+        limit, 
         total: allCities.length,
         cities: allCities,
         ...(allCities.length === 0 && { 
@@ -129,66 +147,56 @@ class PollutionService {
     }
   }
   */
-  async getCities() {
+ async getCities(page = 1, limit = 10) {
     try {
       if (!this.token) await this.authenticate();
 
       const countries = ['PL', 'DE', 'ES', 'FR'];
-      const allCities = [];
-      /*
+      let allCities = [];
+
       for (const country of countries) {
         try {
-          const data = await this.fetchData(country);
-          console.log("... data ...",data);
+          const data = await this.fetchData(country, page, limit);
+          console.log(`... data for ${country} ...`, data);
+
           if (data && data.length > 0) {
-            allCities.push(...data.map(item => ({
-              name: item.city || item.name || 'Unknown',
-              country: item.country || country,
-              pollution: item.pollutionLevel || item.pollution || 0
-            })));
+            // Map raw data with async description
+            const mappedPromises = data.map(async item => {
+              const cityName = item.city || item.name;
+              if (!cityName || cityName.toLowerCase().includes('unknown')) return null;
+
+              return {
+                name: await capitalizeFirstLetter(cityName),
+                country: await capitalizeFirstLetter(item.country || country),
+                pollution: item.pollutionLevel || item.pollution || 0,
+                description: await wikiService.getCityDescription(cityName, item.country) || ''
+              };
+            });
+
+            // Wait for all async mapping to complete
+            let mapped = (await Promise.all(mappedPromises))
+              .filter(city => city && validateCity(city)); // Remove nulls & invalid cities
+
+            // Sanitize final results
+            mapped = sanitizeData(mapped);
+
+            console.log(`.. mapped for ${country} ...`, mapped);
+
+            allCities.push(...mapped);
           }
         } catch (error) {
           console.error(`Skipping ${country} due to error:`, error.message);
           continue;
         }
       }
-      */
-      for (const country of countries) {
-          try {
-            const data = await this.fetchData(country);
-            console.log("... data ...", data);
-
-            if (data && data.length > 0) {
-              // Map raw data first
-              let mapped = data.map(item => ({
-                name: item.city || item.name,
-                country: item.country || country,
-                pollution: item.pollutionLevel || item.pollution || 0
-              }));
-
-              // Sanitize and filter out invalid/unknown cities
-              mapped = sanitizeData(mapped)
-                .filter(city => city.name && validateCity(city)); 
-
-              console.log(".. mapped ...", mapped);
-              // Only push valid cities
-              if (mapped.length > 0) {
-                allCities.push(...mapped);
-              }
-            }
-          } catch (error) {
-            console.error(`Skipping ${country} due to error:`, error.message);
-            continue;
-          }
-      }
-
-
 
       return {
         success: true,
+        page,
+        limit,
         total: allCities.length,
         cities: allCities,
-        ...(allCities.length === 0 && { 
+        ...(allCities.length === 0 && {
           warning: 'API returned no valid city data',
           debug: 'The API responded with unexpected format'
         })
@@ -204,7 +212,7 @@ class PollutionService {
         }
       };
     }
-  }
+}
 
 
 }
